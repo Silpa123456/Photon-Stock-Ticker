@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Photon - Real-time WebSocket Stock Ticker</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f5f5f5;
+      margin: 0;
+      padding: 20px;
+    }
+    h1 {
+      text-align: center;
+    }
+    #status {
+      text-align: center;
+      margin-bottom: 15px;
+      font-weight: bold;
+    }
+    table {
+      margin: 0 auto;
+      background: white;
+      border-collapse: collapse;
+      min-width: 300px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    th, td {
+      border: 1px solid #ddd;
+      padding: 10px 15px;
+      text-align: center;
+    }
+    th {
+      background: #333;
+      color: white;
+    }
+  </style>
+</head>
+<body>
+  <h1>Photon - Real-time Stock Ticker</h1>
+  <div id="status">Connecting to server...</div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Ticker</th>
+        <th>Price (USD)</th>
+      </tr>
+    </thead>
+    <tbody id="stocks-body">
+      <!-- rows will be added by JavaScript -->
+    </tbody>
+  </table>
+
+  <script>
+    const statusDiv = document.getElementById("status");
+    const tableBody = document.getElementById("stocks-body");
+
+    // Store last prices to compare and color green/red
+    const lastPrices = {};
+
+    const ws = new WebSocket("ws://localhost:8000/ws/stocks");
+
+    ws.onopen = () => {
+      statusDiv.textContent = "Connected ✔";
+      statusDiv.style.color = "green";
+    };
+
+    ws.onclose = () => {
+      statusDiv.textContent = "Disconnected ✖";
+      statusDiv.style.color = "red";
+    };
+
+    ws.onerror = () => {
+      statusDiv.textContent = "Error connecting to server";
+      statusDiv.style.color = "red";
+    };
+
+    ws.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      const ticker = data.ticker;
+      const price = data.price;
+
+      let row = document.getElementById("row-" + ticker);
+
+      if (!row) {
+        // create a new row for this ticker
+        row = document.createElement("tr");
+        row.id = "row-" + ticker;
+        row.innerHTML = `
+          <td>${ticker}</td>
+          <td id="price-${ticker}"></td>
+        `;
+        tableBody.appendChild(row);
+      }
+
+      const priceCell = document.getElementById("price-" + ticker);
+      const oldPrice = lastPrices[ticker];
+
+      priceCell.textContent = price.toFixed(2);
+
+      if (oldPrice !== undefined) {
+        if (price > oldPrice) {
+          priceCell.style.color = "green";
+        } else if (price < oldPrice) {
+          priceCell.style.color = "red";
+        } else {
+          priceCell.style.color = "black";
+        }
+      }
+
+      lastPrices[ticker] = price;
+    };
+  </script>
+</body>
+</html>
